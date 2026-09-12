@@ -27,10 +27,28 @@ dependencies) reproduced the full flow:
 | WSS handshake | Success |
 | Message sequence | `turn.start` → `response` → `audio.metadata` → `turn.end` |
 | Audio returned | 22,752 bytes, valid MP3, 48 kbps / 24 kHz mono, 3.79 s |
-| Time to first byte | ~1.6–1.7 s |
+| Time to first byte | ~1.6–1.7 s cold (see section 2.1, this is mostly handshake) |
 | Voice catalog | Plain HTTPS GET → 322 voices, 142 locales |
 | Concurrency | 4 simultaneous connections, no latency degradation |
 | Custom voice names | Rejected: `close 1007 Unsupported voice` |
+
+### 2.1 Latency decomposition
+
+The initial time-to-first-byte figure bundles connection setup with synthesis and is
+misleading on its own. Decomposed by phase:
+
+| Phase | Measured |
+|---|---|
+| WSS handshake (TLS + upgrade) | 886–968 ms, highly consistent |
+| `ssml` sent to first audio byte | 189–282 ms typical, occasional ~620 ms outliers |
+| Audio delivery | Incremental: 20 frames for 2.30 s of audio, 57 frames for 6.82 s |
+
+The handshake is roughly four times the synthesis cost and is fully amortizable by
+connection pooling. A pooled connection idle for 2 s showed no penalty on first audio.
+
+This matters because it changes what the service is capable of: at ~200 ms warm, the
+synthesis latency is within the usable range for conversational voice agents, whereas
+the ~1.1 s cold figure is not.
 
 **Conclusions that drive this design:**
 
@@ -267,6 +285,40 @@ discriminate between them, but it must be understood before production use.
 Voice cloning of a real person's voice requires recorded consent. This is enforced
 structurally through a required aggregate field rather than by convention.
 
+## 11. Realtime Voice Integration and Scope Boundary
+
+The service is designed to be consumable as the text-to-speech leg of a realtime voice
+agent, including telephony. **Orchestration of such an agent is explicitly out of scope
+for this repository.**
+
+A voice agent is a stateful realtime orchestrator: voice activity detection, barge-in,
+turn taking, streaming speech recognition, streaming language model output, echo
+cancellation and jitter buffering, plus a telephony transport. This service is a
+stateless synthesis leaf. Combining the two would merge two unrelated problem domains
+into one deployable.
+
+Pipecat (BSD-2-Clause, actively maintained) already provides that orchestration along
+with telephony serializers for Twilio, Telnyx, Plivo, Exotel, Genesys and Vonage. The
+correct relationship is that Pipecat consumes this service, not that this service grows
+a pipeline.
+
+Three constraints were identified by reading Pipecat's source and drive M8:
+
+1. `OpenAITTSService` hardcodes `response_format: "pcm"` and wraps chunks in
+   `TTSAudioRawFrame`. It never decodes a container, so realtime consumers need a PCM
+   stream. This makes the output-format spike a prerequisite rather than a refinement.
+2. `OpenAITTSService` validates `voice` against a fixed list of twelve OpenAI names and
+   rejects anything else, so custom cloned voices are unreachable through that path
+   except by aliasing one of those twelve slots.
+3. Pipecat exposes `WordTTSService` for providers that emit word timings, which
+   barge-in handling uses to determine how much speech was actually delivered. This
+   service already produces boundary metadata, so a dedicated Pipecat service is both
+   simpler and strictly more capable than reusing the OpenAI adapter.
+
+A dedicated realtime vendor reaches 75–150 ms time to first byte against this service's
+~200 ms warm figure. The tradeoff is cost against latency and should be re-evaluated
+if production volume justifies it.
+
 ## 11. Milestones
 
 | # | Milestone | Delivers |
@@ -279,3 +331,4 @@ structurally through a required aggregate field rather than by convention.
 | M5 | MCP Server | stdio and HTTP/SSE transports, tools |
 | M6 | Custom Voice Cloning | Voice profiles, consent, F5-TTS engine |
 | M7 | Production Readiness | Cache, observability, native image, k3s |
+| M8 | Realtime Voice Integration | Connection pooling, PCM output, Pipecat integration |
