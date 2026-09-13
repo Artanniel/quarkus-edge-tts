@@ -11,7 +11,8 @@ OWNER="${OWNER:-Artanniel}"
 REPO="${REPO:-Artanniel/quarkus-edge-tts}"
 TITLE="${TITLE:-Quarkus Edge-TTS}"
 
-if ! gh auth status 2>&1 | grep -q 'read:project'; then
+# 'project' (full control) implies read access; either scope is sufficient.
+if ! gh auth status 2>&1 | grep -E "Token scopes.*'(read:)?project'" >/dev/null; then
   echo "error: token is missing the project scope." >&2
   echo "run: gh auth refresh -s project,read:project" >&2
   exit 1
