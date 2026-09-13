@@ -46,4 +46,4 @@ gh issue list --repo "$REPO" --state all --limit 200 --json number,title \
 
 echo
 echo "done: $url"
-echo "group the board by Milestone to get the M0-M7 delivery order."
+echo "group the board by Milestone to get the M0-M8 delivery order."
