@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: quarkus-edge-tts
+  labels:
+    app: quarkus-edge-tts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: quarkus-edge-tts
+  template:
+    metadata:
+      labels:
+        app: quarkus-edge-tts
+    spec:
+      containers:
+        - name: app
+          image: your-registry/quarkus-edge-tts:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: TRUSTED_CLIENT_TOKEN
+              value: "${TRUSTED_CLIENT_TOKEN}"
+            - name: SIDE_CAR_URL
+              value: "${SIDE_CAR_URL}"
+            - name: CLONING_SERVICE_URL
+              value: "${CLONING_SERVICE_URL}"
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "250m"
+              memory: "256Mi"
