@@ -1,0 +1,17 @@
+# Quarkus Edge TTS – Helm chart
+apiVersion: v2
+name: quarkus-edge-tts
+description: Deploy the Edge‑TTS service on Kubernetes (Helm)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+
+# Values – override at install time
+#   image.repository: your‑registry/quarkus‑edge‑tts
+#   image.tag: latest
+#   service.type: ClusterIP | LoadBalancer
+#   resources.limits.cpu: "500m"
+#   resources.limits.memory: "512Mi"
+#   env.TRUSTED_CLIENT_TOKEN: "<token>"
+#   env.SIDE_CAR_URL: "http://sidecar:8000/synthesize"
+#   env.CLONING_SERVICE_URL: "http://cloning:8500/clone"
