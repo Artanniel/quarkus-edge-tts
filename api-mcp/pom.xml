@@ -10,6 +10,26 @@
   <artifactId>api-mcp</artifactId>
   <dependencies>
     <dependency>
+      <groupId>com.artanniel</groupId>
+      <artifactId>core</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.artanniel</groupId>
+      <artifactId>engine-java</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>com.artanniel</groupId>
+      <artifactId>engine-sidecar</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-resteasy-reactive</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>io.quarkus</groupId>
+      <artifactId>quarkus-resteasy-reactive-jackson</artifactId>
+    </dependency>
+    <dependency>
       <groupId>io.vertx</groupId>
       <artifactId>vertx-core</artifactId>
     </dependency>

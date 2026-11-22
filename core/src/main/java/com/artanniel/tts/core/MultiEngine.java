@@ -6,12 +6,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
 
-/**
- * Engine that tries a list of {@link TtsEngine}s in order. It first checks if the engine
- * {@link TtsEngine#supports(VoiceRef)} the requested voice; if not, it skips it. If the engine
- * supports the voice but throws an exception during {@link #synthesize(SynthesisRequest)} it
- * falls back to the next engine.
- */
 public class MultiEngine implements TtsEngine {
     private final List<TtsEngine> engines;
 
@@ -20,7 +14,7 @@ public class MultiEngine implements TtsEngine {
     }
 
     @Override
-    public Stream<byte[]> synthesize(SynthesisRequest request) {
+    public byte[] synthesize(SynthesisRequest request) throws Exception {
         VoiceRef voice = request.voice();
         for (TtsEngine engine : engines) {
             if (engine.supports(voice)) {
@@ -31,8 +25,13 @@ public class MultiEngine implements TtsEngine {
                 }
             }
         }
-        // No engine supports or all failed – return empty stream
-        return Stream.empty();
+        throw new RuntimeException("No engine succeeded in MultiEngine");
+    }
+
+    @Override
+    public Stream<byte[]> synthesizeStream(SynthesisRequest request) throws Exception {
+        byte[] audio = synthesize(request);
+        return Stream.of(audio);
     }
 
     @Override

@@ -8,7 +8,7 @@ import java.util.stream.Stream;
 
 /**
  * Failover implementation that tries a primary {@link TtsEngine} and, on any exception,
- * falls back to a secondary engine. It also merges the voice catalogs for listVoices().
+ * falls back to a secondary engine.
  */
 public class FailoverTtsEngine implements TtsEngine {
     private final TtsEngine primary;
@@ -20,12 +20,20 @@ public class FailoverTtsEngine implements TtsEngine {
     }
 
     @Override
-    public Stream<byte[]> synthesize(SynthesisRequest request) {
+    public byte[] synthesize(SynthesisRequest request) throws Exception {
         try {
             return primary.synthesize(request);
         } catch (Exception e) {
-            // Log could be added here; now we simply fallback.
             return secondary.synthesize(request);
+        }
+    }
+
+    @Override
+    public Stream<byte[]> synthesizeStream(SynthesisRequest request) throws Exception {
+        try {
+            return primary.synthesizeStream(request);
+        } catch (Exception e) {
+            return secondary.synthesizeStream(request);
         }
     }
 

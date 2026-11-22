@@ -6,18 +6,12 @@ import io.vertx.core.buffer.Buffer;
 import io.vertx.ext.web.client.WebClient;
 import io.vertx.ext.web.client.HttpResponse;
 import java.util.List;
-import java.util.stream.Stream;
-import java.util.concurrent.SubmissionPublisher;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 
-/**
- * Wrapper to call a Python FastAPI sidecar that performs the Edge TTS protocol.
- * The sidecar expects JSON payload:
- *   {"text":"...","voice":"...","rate":1.0,"pitch":1.0,"volume":1.0}
- * and returns raw audio bytes (application/octet-stream).
- */
 public class PythonSidecarTtsEngine implements TtsEngine {
     private final WebClient client;
-    private final String sidecarUrl; // e.g. http://localhost:8000/synthesize
+    private final String sidecarUrl;
     private final VoiceCatalog catalog = new VoiceCatalog();
 
     public PythonSidecarTtsEngine(String sidecarUrl) {
@@ -26,28 +20,29 @@ public class PythonSidecarTtsEngine implements TtsEngine {
     }
 
     @Override
-    public Stream<byte[]> synthesize(SynthesisRequest request) {
-        SubmissionPublisher<byte[]> publisher = new SubmissionPublisher<>();
-        // Build JSON body
+    public byte[] synthesize(SynthesisRequest request) throws Exception {
         String json = "{\"text\":\"" + request.text().replace("\"", "\\\"") + "\","
                 + "\"voice\":\"" + request.voice().name() + "\","
                 + "\"rate\":" + request.rate() + ","
                 + "\"pitch\":" + request.pitch() + ","
                 + "\"volume\":" + request.volume() + "}";
+
+        CompletableFuture<byte[]> future = new CompletableFuture<>();
         client.postAbs(sidecarUrl)
                 .putHeader("Content-Type", "application/json")
                 .sendBuffer(Buffer.buffer(json), ar -> {
                     if (ar.succeeded()) {
                         HttpResponse<Buffer> resp = ar.result();
                         if (resp.statusCode() == 200) {
-                            publisher.submit(resp.body().getBytes());
+                            future.complete(resp.body().getBytes());
                         } else {
-                            // treat non‑200 as failure – publish nothing
+                            future.completeExceptionally(new RuntimeException("Sidecar returned HTTP " + resp.statusCode()));
                         }
+                    } else {
+                        future.completeExceptionally(ar.cause());
                     }
-                    publisher.close();
                 });
-        return publisher.consume().stream();
+        return future.get(15, TimeUnit.SECONDS);
     }
 
     @Override
